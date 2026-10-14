@@ -1,0 +1,623 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum BusinessType {
+  RESTAURANT
+  CLINIC
+  RETAIL
+  OTHER
+}
+
+enum Currency {
+  NGN
+  USD // kept for later; only NGN is charged in the MVP [FR-004, decision D1]
+}
+
+enum Platform {
+  IOS
+  ANDROID
+}
+
+enum AuthCodePurpose {
+  VERIFY_EMAIL
+  LOGIN_NEW_DEVICE
+  PASSWORD_RESET
+}
+
+enum ShiftStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum ShiftChangeType {
+  PUBLISHED
+  TIME_CHANGED
+  ASSIGNEE_CHANGED
+  POSITION_CHANGED
+  NOTES_CHANGED
+  CANCELLED
+}
+
+enum SwapScope {
+  DIRECT
+  POOL
+}
+
+enum SwapStatus {
+  AWAITING_PEER
+  AWAITING_MANAGER
+  APPROVED
+  REJECTED
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+enum NotificationType {
+  SCHEDULE_PUBLISHED
+  SHIFT_ASSIGNED
+  SHIFT_CHANGED
+  SHIFT_REMOVED
+  SHIFT_NOTES_CHANGED
+  OPEN_SHIFT_AVAILABLE
+  SWAP_OFFERED
+  SWAP_NEEDS_APPROVAL
+  SWAP_RESOLVED
+  CLAIM_RESOLVED
+  TIME_OFF_REQUESTED
+  TIME_OFF_RESOLVED
+  SHIFT_REMINDER
+  ACK_REMINDER
+  TRIAL_ENDING
+  BILLING_ALERT
+}
+
+enum DeliveryChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  READ_ONLY
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  OPEN
+  PAID
+  FAILED
+  VOID
+}
+
+enum InvoiceLineKind {
+  SEATS
+  PRORATION
+}
+
+// ---------- Identity and sessions ----------
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique // stored lowercase
+  passwordHash    String
+  name            String
+  phoneE164       String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+  pushTokens    PushToken[]
+  authCodes     AuthCode[]
+  devices       Device[]
+  notifications Notification[]
+}
+
+model AuthCode {
+  id         String          @id @default(cuid())
+  userId     String?
+  user       User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String
+  purpose    AuthCodePurpose
+  codeHash   String
+  attempts   Int             @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime        @default(now())
+
+  @@index([email, purpose, createdAt])
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique
+  deviceLabel       String?
+  deviceId          String?
+  device            Device?   @relation(fields: [deviceId], references: [id])
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  createdAt         DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PushToken {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expoPushToken String    @unique
+  platform      Platform
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  disabledAt    DateTime?
+
+  @@index([userId])
+}
+
+model Device {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId      String // random ID made by the app, kept in secure storage
+  label         String?
+  trustedAt     DateTime? // set after a valid new-device code [FR-002]
+  lastSeenAt    DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+
+  @@unique([userId, deviceId])
+}
+
+// ---------- Business structure ----------
+
+model Business {
+  id          String       @id @default(cuid())
+  name        String
+  type        BusinessType
+  countryCode String       @default("NG")
+  currency    Currency     @default(NGN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  locations       Location[]
+  positions       Position[]
+  memberships     Membership[]
+  invites         Invite[]
+  shifts          Shift[]
+  swapRequests    SwapRequest[]
+  timeOffRequests TimeOffRequest[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  seatPeriods     SeatPeriod[]
+  subscription    Subscription?
+}
+
+model Location {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  timezone   String // IANA name, e.g. Africa/Lagos [D-1]
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  shifts Shift[]
+
+  @@index([businessId])
+}
+
+model Position {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  members MembershipPosition[]
+  shifts  Shift[]
+
+  @@unique([businessId, name])
+}
+
+model Membership {
+  id                        String           @id @default(cuid())
+  userId                    String
+  user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId                String
+  business                  Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  role                      Role
+  status                    MembershipStatus @default(ACTIVE)
+  displayName               String
+  preferredMaxWeeklyMinutes Int?
+  activatedAt               DateTime         @default(now())
+  removedAt                 DateTime?
+  anonymizedAt              DateTime?
+
+  positions       MembershipPosition[]
+  availability    AvailabilityWindow[]
+  invitesSent     Invite[]             @relation("InviteSender")
+  shiftsAssigned  Shift[]              @relation("ShiftAssignee")
+  shiftsCreated   Shift[]              @relation("ShiftCreator")
+  shiftChanges    ShiftChange[]        @relation("ShiftChanger")
+  shiftChangeAcks ShiftChangeAck[]
+  swapsRequested  SwapRequest[]        @relation("SwapRequester")
+  swapsTargeted   SwapRequest[]        @relation("SwapTarget")
+  swapsAccepted   SwapRequest[]        @relation("SwapAcceptor")
+  swapsDecided    SwapRequest[]        @relation("SwapDecider")
+  claims          ShiftClaim[]         @relation("ClaimClaimer")
+  claimsDecided   ShiftClaim[]         @relation("ClaimDecider")
+  timeOff         TimeOffRequest[]     @relation("TimeOffRequester")
+  timeOffDecided  TimeOffRequest[]     @relation("TimeOffDecider")
+  auditLogs       AuditLog[]
+  seatPeriods     SeatPeriod[]
+
+  @@unique([userId, businessId])
+  @@index([businessId, status, role])
+}
+
+model MembershipPosition {
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  positionId   String
+  position     Position   @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, positionId])
+}
+
+model SeatPeriod {
+  id           String     @id @default(cuid())
+  businessId   String
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  startedAt    DateTime
+  endedAt      DateTime? // null while the member is active [M-9]
+
+  @@index([businessId, startedAt, endedAt])
+  @@index([membershipId])
+}
+
+model Invite {
+  id               String     @id @default(cuid())
+  businessId       String
+  business         Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invitedById      String
+  invitedBy        Membership @relation("InviteSender", fields: [invitedById], references: [id])
+  role             Role       @default(STAFF)
+  email            String?
+  phoneE164        String?
+  positionIds      String[]
+  tokenHash        String     @unique // stored hashed [P-1]
+  codeHash         String // stored hashed [P-1]
+  codeAttempts     Int        @default(0)
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  acceptedByUserId String?
+  revokedAt        DateTime?
+  createdAt        DateTime   @default(now())
+
+  @@index([businessId])
+  @@index([email])
+}
+
+// ---------- Preferences and time off ----------
+
+model AvailabilityWindow {
+  id           String     @id @default(cuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int // ISO: 1 = Monday ... 7 = Sunday
+  startMinute  Int // minutes from local midnight
+  endMinute    Int // may pass midnight: values above 1440 mean next day, up to 2880 [D-1]
+
+  @@index([membershipId, dayOfWeek])
+}
+
+model TimeOffRequest {
+  id           String        @id @default(cuid())
+  businessId   String
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership    @relation("TimeOffRequester", fields: [membershipId], references: [id])
+  startDate    DateTime      @db.Date // location-local dates [D-1]
+  endDate      DateTime      @db.Date
+  note         String?
+  status       TimeOffStatus @default(PENDING)
+  decidedById  String?
+  decidedBy    Membership?   @relation("TimeOffDecider", fields: [decidedById], references: [id])
+  decidedAt    DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([businessId, status])
+  @@index([membershipId, startDate])
+}
+
+// ---------- Shifts, changes, swaps, claims ----------
+
+model Shift {
+  id           String      @id @default(cuid())
+  businessId   String
+  business     Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  locationId   String
+  location     Location    @relation(fields: [locationId], references: [id])
+  positionId   String
+  position     Position    @relation(fields: [positionId], references: [id])
+  assigneeId   String? // null on a PUBLISHED shift means open shift
+  assignee     Membership? @relation("ShiftAssignee", fields: [assigneeId], references: [id])
+  startsAt     DateTime // UTC [D-1]
+  endsAt       DateTime // UTC [D-1]
+  breakMinutes Int         @default(0)
+  notes        String?
+  status       ShiftStatus @default(DRAFT)
+  version      Int         @default(1)
+  publishedAt  DateTime?
+  cancelledAt  DateTime?
+  uncoveredAt  DateTime? // set when a manager flags a past shift as uncovered [FR-021]
+  createdById  String
+  createdBy    Membership  @relation("ShiftCreator", fields: [createdById], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  changes      ShiftChange[]
+  swapRequests SwapRequest[]
+  claims       ShiftClaim[]
+
+  @@index([businessId, startsAt])
+  @@index([assigneeId, startsAt])
+  @@index([locationId, startsAt])
+}
+
+model ShiftChange {
+  id          String          @id @default(cuid())
+  shiftId     String
+  shift       Shift           @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  version     Int
+  type        ShiftChangeType
+  summary     String
+  requiresAck Boolean         @default(false)
+  changedById String
+  changedBy   Membership      @relation("ShiftChanger", fields: [changedById], references: [id])
+  createdAt   DateTime        @default(now())
+
+  acks ShiftChangeAck[]
+
+  @@unique([shiftId, version])
+}
+
+model ShiftChangeAck {
+  id            String      @id @default(cuid())
+  shiftChangeId String
+  shiftChange   ShiftChange @relation(fields: [shiftChangeId], references: [id], onDelete: Cascade)
+  membershipId  String
+  membership    Membership  @relation(fields: [membershipId], references: [id])
+  createdAt     DateTime    @default(now())
+  ackedAt       DateTime? // null until the member taps Acknowledge [FR-022]
+
+  @@unique([shiftChangeId, membershipId])
+  @@index([membershipId, ackedAt])
+}
+
+model SwapRequest {
+  id              String      @id @default(cuid())
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  shiftId         String
+  shift           Shift       @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  requesterId     String
+  requester       Membership  @relation("SwapRequester", fields: [requesterId], references: [id])
+  scope           SwapScope
+  targetId        String? // set for DIRECT [FR-023]
+  target          Membership? @relation("SwapTarget", fields: [targetId], references: [id])
+  acceptedById    String?
+  acceptedBy      Membership? @relation("SwapAcceptor", fields: [acceptedById], references: [id])
+  status          SwapStatus  @default(AWAITING_PEER)
+  expiresAt       DateTime // earlier of createdAt + 48h and shift start [FR-023]
+  peerRespondedAt DateTime?
+  decidedById     String?
+  decidedBy       Membership? @relation("SwapDecider", fields: [decidedById], references: [id])
+  decidedAt       DateTime?
+  decisionNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([businessId, status])
+  @@index([status, expiresAt])
+  @@index([shiftId])
+}
+
+model ShiftClaim {
+  id           String      @id @default(cuid())
+  shiftId      String
+  shift        Shift       @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership  @relation("ClaimClaimer", fields: [membershipId], references: [id])
+  status       ClaimStatus @default(PENDING)
+  decidedById  String?
+  decidedBy    Membership? @relation("ClaimDecider", fields: [decidedById], references: [id])
+  decidedAt    DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@unique([shiftId, membershipId])
+  @@index([shiftId, status])
+}
+
+// ---------- Notifications ----------
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId  String?
+  business    Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  body        String
+  data        Json?
+  requiresAck Boolean          @default(false)
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt])
+}
+
+model NotificationDelivery {
+  id             String          @id @default(cuid())
+  notificationId String
+  notification   Notification    @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        DeliveryChannel
+  status         DeliveryStatus  @default(QUEUED)
+  providerRef    String? // Expo ticket ID, email message ID, SMS ID
+  error          String?
+  attempts       Int             @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime        @default(now())
+
+  @@index([notificationId])
+  @@index([channel, status])
+}
+
+// ---------- Billing ----------
+
+model Subscription {
+  id                      String             @id @default(cuid())
+  businessId              String             @unique
+  business                Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  status                  SubscriptionStatus @default(TRIALING)
+  currency                Currency
+  seatPriceMinor          Int // snapshot in kobo [M-1, M-6]
+  trialEndsAt             DateTime
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  graceEndsAt             DateTime?
+  cancelAtPeriodEnd       Boolean            @default(false)
+  cancelledAt             DateTime?
+  providerName            String?
+  providerCustomerRef     String?
+  providerPaymentTokenRef String? // token reference only, never card data [M-4]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  invoices Invoice[]
+
+  @@index([status, currentPeriodEnd])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  dueAt          DateTime // starts the retry and grace clock [M-12]
+  seatCount      Int
+  totalMinor     Int // integer kobo [M-1]
+  currency       Currency
+  status         InvoiceStatus @default(OPEN)
+  attemptCount   Int           @default(0)
+  nextAttemptAt  DateTime?
+  providerTxnRef String?       @unique
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  lines InvoiceLine[]
+
+  @@index([subscriptionId, status])
+  @@index([status, nextAttemptAt])
+}
+
+model InvoiceLine {
+  id              String          @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind            InvoiceLineKind
+  description     String
+  quantity        Int
+  unitAmountMinor Int // integer kobo [M-1]
+  amountMinor     Int // integer kobo [M-1]
+
+  @@index([invoiceId])
+}
+
+model PaymentEvent {
+  id              String    @id @default(cuid())
+  provider        String
+  providerEventId String
+  type            String
+  payload         Json
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@unique([provider, providerEventId])
+}
+
+// ---------- Audit ----------
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      Membership? @relation(fields: [actorId], references: [id])
+  action     String // e.g. SHIFT_OVERRIDE, MEMBER_REMOVED
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([businessId, createdAt])
+}

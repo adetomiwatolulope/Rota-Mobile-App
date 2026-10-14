@@ -1,0 +1,533 @@
+/*
+ * ================================================================
+ * design-tokens.css
+ * Rota Design System — Generated CSS Custom Properties
+ * ================================================================
+ *
+ * ⚠️  THIS FILE IS AUTO-GENERATED. DO NOT EDIT BY HAND.
+ *
+ * To regenerate:
+ *   node scripts/tokens-to-css.js
+ *
+ * Source:    design-tokens.tokens (1).json
+ * Generator: scripts/tokens-to-css.js
+ * Generated: 2026-10-12T11:19:15.295Z
+ *
+ * ────────────────────────────────────────────────
+ * COLOUR LAYER RULE
+ * ────────────────────────────────────────────────
+ *  ⛔  --primitive-*  Raw palette — DO NOT use in components.
+ *  ✅  --color-*      Semantic roles — USE THESE in components.
+ *
+ * See scripts/tokens-to-css.js for full architecture docs.
+ * ================================================================
+ */
+
+/* ============================================================
+ * ELEVATION / SHADOWS
+ * ============================================================
+ *
+ * Three elevation levels expressed as CSS box-shadow values.
+ *
+ *   --shadow-soft    Subtle lift. Use for cards at rest.
+ *   --shadow-medium  Moderate elevation. Use for dropdowns / drawers.
+ *   --shadow-hard    Strong elevation. Use for dialogs / modals.
+ *
+ * Usage:
+ *   box-shadow: var(--shadow-soft);
+ * ============================================================ */
+:root {
+  --shadow-hard: 4px 6px 8px 0px #00000052;
+  --shadow-medium: 2px 4px 6px 0px #00000047;
+  --shadow-soft: 2px 2px 20px 0px #0000001f;
+}
+
+/* ============================================================
+ * PRIMITIVE COLOURS  —  FOUNDATION LAYER
+ * ============================================================
+ *
+ * ⛔  DO NOT use --primitive-* variables directly in
+ *     component or screen styles.
+ *
+ * These are the raw tonal palettes from which all semantic
+ * colour roles (--color-*) are derived. They exist as the
+ * single authoritative source of truth for the colour system.
+ *
+ * Palette families:
+ *   Key Colours        — Named source hues for each palette family.
+ *   Primary            — Brand teal scale.
+ *   Secondary          — Mirrors primary for layered use.
+ *   Tertiary           — Complementary teal variant.
+ *   Neutral            — Pure grey scale for surfaces & text.
+ *   Neutral Variant    — Slightly warmer grey scale.
+ *   Error              — Red scale for destructive states.
+ *   Info               — Blue scale for informational states.
+ *   Warning            — Amber scale for cautionary states.
+ *   Success            — Green scale for positive states.
+ *
+ * Tonal step convention:
+ *   0   = Absolute black end of the scale.
+ *   100 = Absolute white end of the scale.
+ *   Intermediate steps are non-linear; smaller steps appear
+ *   where finer tonal distinctions are needed (95, 98, 99).
+ * ============================================================ */
+:root {
+
+  /* --- KEY COLORS --- */
+  --primitive-key-primary-key-color: #012624;
+  --primitive-key-secondary-key-color: #04958d;
+  --primitive-key-tertiary-key-color: #003330;
+  --primitive-key-neutral-key-color: #1e1e1e;
+  --primitive-key-neutral-variant-key-color: #444444;
+  --primitive-key-error-key-color: #ba0d10;
+  --primitive-key-info-key-color: #0d2aba;
+  --primitive-key-warning-key-color: #ba7b0d;
+  --primitive-key-success-key-color: #04802e;
+
+  /* --- PRIMARY COLORS --- */
+  --primitive-primary-primary-0: #000000;
+  --primitive-primary-primary-10: #01322f;
+  --primitive-primary-primary-20: #03635e;
+  --primitive-primary-primary-30: #04958d;
+  --primitive-primary-primary-40: #05c7bc;
+  --primitive-primary-primary-50: #07f8eb;
+  --primitive-primary-primary-60: #38faef;
+  --primitive-primary-primary-70: #6afbf3;
+  --primitive-primary-primary-80: #9cfcf7;
+  --primitive-primary-primary-90: #cdfefb;
+  --primitive-primary-primary-95: #e6fefd;
+  --primitive-primary-primary-98: #f5fffe;
+  --primitive-primary-primary-99: #faffff;
+  --primitive-primary-primary-100: #ffffff;
+
+  /* --- SECONDARY COLORS --- */
+  --primitive-secondary-secondary-0: #000000;
+  --primitive-secondary-secondary-10: #01322f;
+  --primitive-secondary-secondary-20: #03635e;
+  --primitive-secondary-secondary-30: #04958d;
+  --primitive-secondary-secondary-40: #05c7bc;
+  --primitive-secondary-secondary-50: #07f8eb;
+  --primitive-secondary-secondary-60: #38faef;
+  --primitive-secondary-secondary-70: #6afbf3;
+  --primitive-secondary-secondary-80: #9cfcf7;
+  --primitive-secondary-secondary-90: #cdfefb;
+  --primitive-secondary-secondary-95: #e6fefd;
+  --primitive-secondary-secondary-98: #f5fffe;
+  --primitive-secondary-secondary-99: #faffff;
+  --primitive-secondary-secondary-100: #ffffff;
+
+  /* --- TERTIARY COLORS --- */
+  --primitive-tertiary-tertiary-0: #000000;
+  --primitive-tertiary-tertiary-10: #003330;
+  --primitive-tertiary-tertiary-20: #006660;
+  --primitive-tertiary-tertiary-30: #009990;
+  --primitive-tertiary-tertiary-40: #00ccc0;
+  --primitive-tertiary-tertiary-50: #00fff0;
+  --primitive-tertiary-tertiary-60: #33fff3;
+  --primitive-tertiary-tertiary-70: #66fff6;
+  --primitive-tertiary-tertiary-80: #99fff9;
+  --primitive-tertiary-tertiary-90: #ccfffc;
+  --primitive-tertiary-tertiary-95: #e5fffe;
+  --primitive-tertiary-tertiary-98: #f5fffe;
+  --primitive-tertiary-tertiary-99: #faffff;
+  --primitive-tertiary-tertiary-100: #ffffff;
+
+  /* --- NEUTRAL COLORS --- */
+  --primitive-neutral-neutral-0: #000000;
+  --primitive-neutral-neutral-10: #1a1a1a;
+  --primitive-neutral-neutral-20: #333333;
+  --primitive-neutral-neutral-30: #4d4d4d;
+  --primitive-neutral-neutral-40: #666666;
+  --primitive-neutral-neutral-50: #808080;
+  --primitive-neutral-neutral-60: #999999;
+  --primitive-neutral-neutral-70: #b3b3b3;
+  --primitive-neutral-neutral-80: #cccccc;
+  --primitive-neutral-neutral-90: #e6e6e6;
+  --primitive-neutral-neutral-95: #f2f2f2;
+  --primitive-neutral-neutral-98: #fafafa;
+  --primitive-neutral-neutral-99: #fcfcfc;
+  --primitive-neutral-neutral-100: #ffffff;
+
+  /* --- NEUTRAL VARIANT COLORS --- */
+  --primitive-neutral-variant-neutral-variant-0: #000000;
+  --primitive-neutral-variant-neutral-variant-10: #1a1a1a;
+  --primitive-neutral-variant-neutral-variant-20: #333333;
+  --primitive-neutral-variant-neutral-variant-30: #4d4d4d;
+  --primitive-neutral-variant-neutral-variant-40: #666666;
+  --primitive-neutral-variant-neutral-variant-50: #808080;
+  --primitive-neutral-variant-neutral-variant-60: #999999;
+  --primitive-neutral-variant-neutral-variant-70: #b3b3b3;
+  --primitive-neutral-variant-neutral-variant-80: #cccccc;
+  --primitive-neutral-variant-neutral-variant-90: #e6e6e6;
+  --primitive-neutral-variant-neutral-variant-95: #f2f2f2;
+  --primitive-neutral-variant-neutral-variant-98: #fafafa;
+  --primitive-neutral-variant-neutral-variant-99: #fcfcfc;
+  --primitive-neutral-variant-neutral-variant-100: #ffffff;
+
+  /* --- ERROR COLORS --- */
+  --primitive-error-error-0: #000000;
+  --primitive-error-error-10: #300304;
+  --primitive-error-error-20: #5f0708;
+  --primitive-error-error-30: #8f0a0c;
+  --primitive-error-error-40: #bf0d10;
+  --primitive-error-error-50: #ee1114;
+  --primitive-error-error-60: #f24043;
+  --primitive-error-error-70: #f57072;
+  --primitive-error-error-80: #f8a0a1;
+  --primitive-error-error-90: #fccfd0;
+  --primitive-error-error-95: #fddede;
+  --primitive-error-error-98: #feecec;
+  --primitive-error-error-99: #fef5f6;
+  --primitive-error-error-100: #ffffff;
+
+  /* --- INFO COLORS --- */
+  --primitive-info-info-0: #000000;
+  --primitive-info-info-10: #030b30;
+  --primitive-info-info-20: #07155f;
+  --primitive-info-info-30: #0a208f;
+  --primitive-info-info-40: #0d2bbf;
+  --primitive-info-info-50: #1136ee;
+  --primitive-info-info-60: #405ef2;
+  --primitive-info-info-70: #7086f5;
+  --primitive-info-info-80: #a0aef8;
+  --primitive-info-info-90: #cfd7fc;
+  --primitive-info-info-95: #dee3fd;
+  --primitive-info-info-98: #eceffe;
+  --primitive-info-info-99: #f5f7fe;
+  --primitive-info-info-100: #ffffff;
+
+  /* --- WARNING COLORS --- */
+  --primitive-warning-warning-0: #000000;
+  --primitive-warning-warning-10: #301f03;
+  --primitive-warning-warning-20: #5f3f07;
+  --primitive-warning-warning-30: #8f5e0a;
+  --primitive-warning-warning-40: #bf7e0d;
+  --primitive-warning-warning-50: #ee9d11;
+  --primitive-warning-warning-60: #f2b140;
+  --primitive-warning-warning-70: #f5c470;
+  --primitive-warning-warning-80: #f8d8a0;
+  --primitive-warning-warning-90: #fcebcf;
+  --primitive-warning-warning-95: #fdf1de;
+  --primitive-warning-warning-98: #fef7ec;
+  --primitive-warning-warning-99: #fefbf5;
+  --primitive-warning-warning-100: #ffffff;
+
+  /* --- SUCCESS COLORS --- */
+  --primitive-success-success-0: #000000;
+  --primitive-success-success-10: #023112;
+  --primitive-success-success-20: #036324;
+  --primitive-success-success-30: #059435;
+  --primitive-success-success-40: #06c647;
+  --primitive-success-success-50: #08f759;
+  --primitive-success-success-60: #39f97a;
+  --primitive-success-success-70: #6bfa9b;
+  --primitive-success-success-80: #9cfcbd;
+  --primitive-success-success-90: #cefdde;
+  --primitive-success-success-95: #dcfee8;
+  --primitive-success-success-98: #ebfef2;
+  --primitive-success-success-99: #f5fff8;
+  --primitive-success-success-100: #ffffff;
+}
+
+/* ============================================================
+ * COLOUR ROLES  —  SEMANTIC LAYER
+ * ============================================================
+ *
+ * ✅  Use these --color-* variables in all component and
+ *     screen styles. Never reference --primitive-* directly.
+ *
+ * Each variable carries a trace comment showing which
+ * primitive it aliases and the resolved hex value.
+ *
+ * Naming patterns (Material Design 3 convention):
+ *
+ *   --color-<role>
+ *       The main colour for that role.
+ *       e.g. background of a primary button.
+ *
+ *   --color-on-<role>
+ *       Colour for content (text, icons) placed ON the role colour.
+ *       Always meets contrast requirements against --color-<role>.
+ *
+ *   --color-<role>-container
+ *       Lighter tinted background for elements associated with the role.
+ *
+ *   --color-on-<role>-container
+ *       Content colour for use ON the container colour.
+ *
+ * Surface roles (layered elevation system):
+ *   --color-surface                  Default background (lightest).
+ *   --color-surface-container-lowest Lower surface layer.
+ *   --color-surface-container-low    ↑
+ *   --color-surface-container        Mid surface layer.
+ *   --color-surface-container-high   ↓
+ *   --color-surface-container-highest Raised surface (e.g. cards).
+ *   --color-inverse-surface           Dark surface for inverse theming.
+ * ============================================================ */
+:root {
+
+  /* --- PRIMARY ROLES --- */
+  --color-primary: #012624; /* → --primitive-key-colors-primary-key-color (#012624) */
+  --color-on-primary: #ffffff; /* → --primitive-primary-colors-primary-100 (#ffffff) */
+  --color-primary-container: #cdfefb; /* → --primitive-primary-colors-primary-90 (#cdfefb) */
+  --color-on-primary-container: #04958d; /* → --primitive-primary-colors-primary-30 (#04958d) */
+
+  /* --- SECONDARY ROLES --- */
+  --color-secondary: #05c7bc; /* → --primitive-secondary-colors-secondary-40 (#05c7bc) */
+  --color-on-secondary: #ffffff; /* → --primitive-secondary-colors-secondary-100 (#ffffff) */
+  --color-secondary-container: #cdfefb; /* → --primitive-secondary-colors-secondary-90 (#cdfefb) */
+  --color-on-secondary-container: #04958d; /* → --primitive-secondary-colors-secondary-30 (#04958d) */
+
+  /* --- TERTIARY ROLES --- */
+  --color-tertiary: #00ccc0; /* → --primitive-tertiary-colors-tertiary-40 (#00ccc0) */
+  --color-on-tertiary: #ffffff; /* → --primitive-tertiary-colors-tertiary-100 (#ffffff) */
+  --color-tertiary-container: #ccfffc; /* → --primitive-tertiary-colors-tertiary-90 (#ccfffc) */
+  --color-on-tertiary-container: #009990; /* → --primitive-tertiary-colors-tertiary-30 (#009990) */
+
+  /* --- NEUTRAL ROLES --- */
+  --color-neutral: #1e1e1e; /* → --primitive-key-colors-neutral-key-color (#1e1e1e) */
+  --color-on-neutral: #ffffff; /* → --primitive-neutral-colors-neutral-100 (#ffffff) */
+  --color-neutral-container: #e6e6e6; /* → --primitive-neutral-colors-neutral-90 (#e6e6e6) */
+  --color-on-neutral-container: #4d4d4d; /* → --primitive-neutral-colors-neutral-30 (#4d4d4d) */
+
+  /* --- NEUTRAL VARIANT ROLES --- */
+  --color-neutral-variant: #444444; /* → --primitive-key-colors-neutral-variant-key-color (#444444) */
+  --color-on-neutral-variant: #ffffff; /* → --primitive-neutral-variant-colors-neutral-variant-100 (#ffffff) */
+  --color-neutral-variant-container: #e6e6e6; /* → --primitive-neutral-variant-colors-neutral-variant-90 (#e6e6e6) */
+  --color-on-neutral-variant-container: #4d4d4d; /* → --primitive-neutral-variant-colors-neutral-variant-30 (#4d4d4d) */
+
+  /* --- ERROR ROLES --- */
+  --color-error: #bf0d10; /* → --primitive-error-colors-error-40 (#bf0d10) */
+  --color-on-error: #ffffff; /* → --primitive-error-colors-error-100 (#ffffff) */
+  --color-error-container: #fccfd0; /* → --primitive-error-colors-error-90 (#fccfd0) */
+  --color-on-error-container: #8f0a0c; /* → --primitive-error-colors-error-30 (#8f0a0c) */
+
+  /* --- INFO ROLES --- */
+  --color-info: #0d2bbf; /* → --primitive-info-colors-info-40 (#0d2bbf) */
+  --color-on-info: #ffffff; /* → --primitive-info-colors-info-100 (#ffffff) */
+  --color-info-container: #cfd7fc; /* → --primitive-info-colors-info-90 (#cfd7fc) */
+  --color-on-info-container: #0a208f; /* → --primitive-info-colors-info-30 (#0a208f) */
+
+  /* --- WARNING ROLES --- */
+  --color-warning: #bf7e0d; /* → --primitive-warning-colors-warning-40 (#bf7e0d) */
+  --color-on-warning: #ffffff; /* → --primitive-warning-colors-warning-100 (#ffffff) */
+  --color-warning-container: #fcebcf; /* → --primitive-warning-colors-warning-90 (#fcebcf) */
+  --color-on-warning-container: #8f5e0a; /* → --primitive-warning-colors-warning-30 (#8f5e0a) */
+
+  /* --- SUCCESS ROLES --- */
+  --color-success: #06c647; /* → --primitive-success-colors-success-40 (#06c647) */
+  --color-on-success: #ffffff; /* → --primitive-success-colors-success-100 (#ffffff) */
+  --color-success-container: #cefdde; /* → --primitive-success-colors-success-90 (#cefdde) */
+  --color-on-success-container: #059435; /* → --primitive-success-colors-success-30 (#059435) */
+
+  /* --- SURFACE ROLES --- */
+  --color-surface: #fafafa; /* → --primitive-neutral-colors-neutral-98 (#fafafa) */
+  --color-on-surface: #1a1a1a; /* → --primitive-neutral-colors-neutral-10 (#1a1a1a) */
+  --color-surface-varaint: #e6e6e6; /* → --primitive-neutral-colors-neutral-90 (#e6e6e6) */
+  --color-on-surface-varaint: #4d4d4d; /* → --primitive-neutral-colors-neutral-30 (#4d4d4d) */
+  --color-surface-container-lowest: #ffffff; /* → --primitive-neutral-colors-neutral-100 (#ffffff) */
+  --color-surface-container-low: #fafafa; /* → --primitive-neutral-colors-neutral-98 (#fafafa) */
+  --color-surface-container: #f2f2f2; /* → --primitive-neutral-colors-neutral-95 (#f2f2f2) */
+  --color-surface-container-high: #e6e6e6; /* → --primitive-neutral-colors-neutral-90 (#e6e6e6) */
+  --color-surface-container-highest: #e6e6e6; /* → --primitive-neutral-colors-neutral-90 (#e6e6e6) */
+  --color-surface-container-lowest-2: #808080; /* → --primitive-neutral-colors-neutral-50 (#808080) */
+  --color-inverse-surface: #333333; /* → --primitive-neutral-colors-neutral-20 (#333333) */
+  --color-inverse-on-surface: #f2f2f2; /* → --primitive-neutral-colors-neutral-95 (#f2f2f2) */
+  --color-inverse-on-surface-2: #f2f2f2; /* → --primitive-neutral-colors-neutral-95 (#f2f2f2) */
+  --color-surface-tint: #05c7bc; /* → --primitive-primary-colors-primary-40 (#05c7bc) */
+}
+
+/* ============================================================
+ * SPACING SYSTEM
+ * ============================================================
+ *
+ * All spacing values are in pixels, built on a base-4 grid.
+ * Use these tokens for padding, margin, gap, and inset values.
+ *
+ * Quick reference:
+ *   --space-no-spacing                0    px
+ *   --space-extremely-small-spacing    2    px
+ *   --space-extra-extra-samll-spacing  4    px  (typo in Figma source)
+ *   --space-extra-small-spacing        8    px
+ *   --space-medium-spacing             12   px
+ *   --space-base-spacing               16   px  ← base unit
+ *   --space-small-large-spacing        20   px
+ *   --space-large-spacing              24   px
+ *   --space-extra-large-spacing        32   px
+ *   --space-extra-extra-large-spacing  40   px
+ *   --space-very-large-spacing         48   px
+ *   --space-extremely-large-spacing    64   px
+ * ============================================================ */
+:root {
+  --space-no-spacing: 0;
+  --space-extremely-small-spacing: 2px;
+  --space-extra-extra-samll-spacing: 4px;
+  --space-extra-small-spacing: 8px;
+  --space-medium-spacing: 12px;
+  --space-base-spacing: 16px;
+  --space-small-large-spacing: 20px;
+  --space-large-spacing: 24px;
+  --space-extra-large-spacing: 32px;
+  --space-extra-extra-large-spacing: 40px;
+  --space-very-large-spacing: 48px;
+  --space-extremely-large-spacing: 64px;
+}
+
+/* ============================================================
+ * TYPOGRAPHY
+ * ============================================================
+ *
+ * Two font families are used across the type scale:
+ *   Lora    — Display styles (expressive, serif).
+ *             Must be loaded from Google Fonts or self-hosted.
+ *   DM Sans — All other styles (clean, geometric sans-serif).
+ *             Must be loaded from Google Fonts or self-hosted.
+ *
+ * Type scale hierarchy (largest → smallest):
+ *   display   → Expressive marketing / hero text (Lora).
+ *   headline  → Major section headings (DM Sans).
+ *   title     → Card and list headings (DM Sans).
+ *   body      → Regular readable copy (DM Sans).
+ *   label     → Captions, chips, helper text (DM Sans).
+ *
+ * Each scale has three size variants: large / medium / small.
+ *
+ * Usage example:
+ *   font-family:    var(--typography-body-large-font-family);
+ *   font-size:      var(--typography-body-large-font-size);
+ *   font-weight:    var(--typography-body-large-font-weight);
+ *   line-height:    var(--typography-body-large-line-height);
+ *   letter-spacing: var(--typography-body-large-letter-spacing);
+ * ============================================================ */
+:root {
+
+  /* --- DISPLAY SCALE --- */
+  /* display / large */
+  --typography-display-large-fontfamily: Lora;
+  --typography-display-large-fontsize: 64px;
+  --typography-display-large-fontweight: 600;
+  --typography-display-large-fontstyle: normal;
+  --typography-display-large-lineheight: 96px;
+  --typography-display-large-letterspacing: -4px;
+  /* Hint → font: 600 64px/96px 'Lora', sans-serif; */
+  /* display / medium */
+  --typography-display-medium-fontfamily: Lora;
+  --typography-display-medium-fontsize: 48px;
+  --typography-display-medium-fontweight: 600;
+  --typography-display-medium-fontstyle: normal;
+  --typography-display-medium-lineheight: 72px;
+  --typography-display-medium-letterspacing: -3px;
+  /* Hint → font: 600 48px/72px 'Lora', sans-serif; */
+  /* display / small */
+  --typography-display-small-fontfamily: Lora;
+  --typography-display-small-fontsize: 32px;
+  --typography-display-small-fontweight: 600;
+  --typography-display-small-fontstyle: normal;
+  --typography-display-small-lineheight: 48px;
+  --typography-display-small-letterspacing: -2px;
+  /* Hint → font: 600 32px/48px 'Lora', sans-serif; */
+
+  /* --- HEADLINE SCALE --- */
+  /* headline / large */
+  --typography-headline-large-fontfamily: DM Sans;
+  --typography-headline-large-fontsize: 32px;
+  --typography-headline-large-fontweight: 500;
+  --typography-headline-large-fontstyle: normal;
+  --typography-headline-large-lineheight: 48px;
+  --typography-headline-large-letterspacing: -1.55px;
+  /* Hint → font: 500 32px/48px 'DM Sans', sans-serif; */
+  /* headline / medium */
+  --typography-headline-medium-fontfamily: DM Sans;
+  --typography-headline-medium-fontsize: 28px;
+  --typography-headline-medium-fontweight: 500;
+  --typography-headline-medium-fontstyle: normal;
+  --typography-headline-medium-lineheight: 42px;
+  --typography-headline-medium-letterspacing: -1.35px;
+  /* Hint → font: 500 28px/42px 'DM Sans', sans-serif; */
+  /* headline / small */
+  --typography-headline-small-fontfamily: DM Sans;
+  --typography-headline-small-fontsize: 24px;
+  --typography-headline-small-fontweight: 500;
+  --typography-headline-small-fontstyle: normal;
+  --typography-headline-small-lineheight: 36px;
+  --typography-headline-small-letterspacing: -1px;
+  /* Hint → font: 500 24px/36px 'DM Sans', sans-serif; */
+
+  /* --- TITLE SCALE --- */
+  /* title / large */
+  --typography-title-large-fontfamily: DM Sans;
+  --typography-title-large-fontsize: 22px;
+  --typography-title-large-fontweight: 500;
+  --typography-title-large-fontstyle: normal;
+  --typography-title-large-lineheight: 33px;
+  --typography-title-large-letterspacing: -1px;
+  /* Hint → font: 500 22px/33px 'DM Sans', sans-serif; */
+  /* title / medium */
+  --typography-title-medium-fontfamily: DM Sans;
+  --typography-title-medium-fontsize: 16px;
+  --typography-title-medium-fontweight: 600;
+  --typography-title-medium-fontstyle: normal;
+  --typography-title-medium-lineheight: 24px;
+  --typography-title-medium-letterspacing: -0.85px;
+  /* Hint → font: 600 16px/24px 'DM Sans', sans-serif; */
+  /* title / small */
+  --typography-title-small-fontfamily: DM Sans;
+  --typography-title-small-fontsize: 14px;
+  --typography-title-small-fontweight: 500;
+  --typography-title-small-fontstyle: normal;
+  --typography-title-small-lineheight: 21px;
+  --typography-title-small-letterspacing: -0.75px;
+  /* Hint → font: 500 14px/21px 'DM Sans', sans-serif; */
+
+  /* --- BODY SCALE --- */
+  /* body / large */
+  --typography-body-large-fontfamily: DM Sans;
+  --typography-body-large-fontsize: 16px;
+  --typography-body-large-fontweight: 500;
+  --typography-body-large-fontstyle: normal;
+  --typography-body-large-lineheight: 24px;
+  --typography-body-large-letterspacing: -0.85px;
+  /* Hint → font: 500 16px/24px 'DM Sans', sans-serif; */
+  /* body / medium */
+  --typography-body-medium-fontfamily: DM Sans;
+  --typography-body-medium-fontsize: 14px;
+  --typography-body-medium-fontweight: 500;
+  --typography-body-medium-fontstyle: normal;
+  --typography-body-medium-lineheight: 21px;
+  --typography-body-medium-letterspacing: -0.75px;
+  /* Hint → font: 500 14px/21px 'DM Sans', sans-serif; */
+  /* body / small */
+  --typography-body-small-fontfamily: DM Sans;
+  --typography-body-small-fontsize: 12px;
+  --typography-body-small-fontweight: 500;
+  --typography-body-small-fontstyle: normal;
+  --typography-body-small-lineheight: 20px;
+  --typography-body-small-letterspacing: -0.75px;
+  /* Hint → font: 500 12px/20px 'DM Sans', sans-serif; */
+
+  /* --- LABEL SCALE --- */
+  /* label / large */
+  --typography-label-large-fontfamily: DM Sans;
+  --typography-label-large-fontsize: 14px;
+  --typography-label-large-fontweight: 400;
+  --typography-label-large-fontstyle: normal;
+  --typography-label-large-lineheight: 21px;
+  --typography-label-large-letterspacing: -0.9px;
+  /* Hint → font: 400 14px/21px 'DM Sans', sans-serif; */
+  /* label / medium */
+  --typography-label-medium-fontfamily: DM Sans;
+  --typography-label-medium-fontsize: 12px;
+  --typography-label-medium-fontweight: 400;
+  --typography-label-medium-fontstyle: normal;
+  --typography-label-medium-lineheight: 20px;
+  --typography-label-medium-letterspacing: -0.75px;
+  /* Hint → font: 400 12px/20px 'DM Sans', sans-serif; */
+  /* label / small */
+  --typography-label-small-fontfamily: DM Sans;
+  --typography-label-small-fontsize: 11px;
+  --typography-label-small-fontweight: 500;
+  --typography-label-small-fontstyle: normal;
+  --typography-label-small-lineheight: 19px;
+  --typography-label-small-letterspacing: -0.8px;
+  /* Hint → font: 500 11px/19px 'DM Sans', sans-serif; */
+}

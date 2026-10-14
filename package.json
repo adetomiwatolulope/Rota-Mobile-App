@@ -1,0 +1,20 @@
+{
+  "name": "rota",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=@rota/api",
+    "dev:frontend": "npm run start --workspace=@rota/mobile",
+    "dev:api": "npm run dev --workspace=@rota/api",
+    "dev:mobile": "npm run start --workspace=@rota/mobile",
+    "check": "npm run typecheck --workspaces --if-present && npm run lint --workspaces --if-present && npm run format:check --workspaces --if-present && npm test --workspaces --if-present"
+  }
+}
