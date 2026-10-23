@@ -14,7 +14,10 @@ export const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000
 
 // Invites [FR-006, FR-007]
 export const INVITE_TTL_DAYS = 7;
-export const INVITE_CODE_MAX_ATTEMPTS = 4; // 5th attempt locks [FR-007]
+// Number of wrong codes allowed before the invite locks. The 5th wrong code
+// locks the invite, so 4 wrong codes are tolerated. [FR-007, P-4]
+// Deliberately different from AUTH_CODE_MAX_ATTEMPTS (P-4: do not match them).
+export const INVITE_CODE_MAX_ATTEMPTS = 4;
 
 // Trials [FR-046] — MVP-A creates row, enforces nothing [X-6]
 export const TRIAL_DURATION_DAYS = 14;
@@ -43,12 +46,17 @@ export const SHIFT_REMINDER_BEFORE_HOURS = 2; // [FR-042, ASSUMPTION]
 export const PUSH_RECEIPT_POLL_DELAY_MINUTES = 15;
 
 // Rate limits [P-7]
+export const RATE_LIMIT_WINDOW_SECONDS = 60;
+export const RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_SECONDS * 1000;
 export const RATE_LIMIT_AUTH_PER_MINUTE = 5;
 export const RATE_LIMIT_OTHER_PER_MINUTE = 120;
 
 // Retention [FR-057]
 export const RETENTION_MONTHS = 24;
 export const SOFT_DELETE_ANONYMIZE_DAYS = 30; // [FR-056]
+
+// Inbox [FR-045] — the in-app inbox shows the last 90 days.
+export const INBOX_WINDOW_DAYS = 90;
 
 // Billing — seat price is never hardcoded [M-6]
 // SEAT_PRICE is read from env only in billing module (MVP-B)

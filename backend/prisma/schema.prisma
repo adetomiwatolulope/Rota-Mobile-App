@@ -139,6 +139,24 @@ enum InvoiceLineKind {
   PRORATION
 }
 
+enum LedgerEntryKind {
+  CHARGE
+  CREDIT
+  REFUND
+}
+
+enum BillingCheckoutStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BillingCheckoutPurpose {
+  SUBSCRIBE
+  UPGRADE
+}
+
 // ---------- Identity and sessions ----------
 
 model User {
@@ -158,6 +176,7 @@ model User {
   authCodes     AuthCode[]
   devices       Device[]
   notifications Notification[]
+  settings      UserSettings?
 }
 
 model AuthCode {
@@ -195,6 +214,7 @@ model PushToken {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId      String?
   expoPushToken String    @unique
   platform      Platform
   createdAt     DateTime  @default(now())
@@ -202,6 +222,25 @@ model PushToken {
   disabledAt    DateTime?
 
   @@index([userId])
+  @@index([userId, deviceId])
+}
+
+model UserSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timezone          String   @default("Africa/Lagos")
+  language          String   @default("en")
+  theme             String   @default("system")
+  quietHoursEnabled Boolean  @default(false)
+  quietHoursStart   Int? // minutes since midnight
+  quietHoursEnd     Int? // minutes since midnight
+  shiftChanges      Boolean  @default(true)
+  swaps             Boolean  @default(true)
+  billing           Boolean  @default(true)
+  reminders         Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
 }
 
 model Device {
@@ -230,17 +269,19 @@ model Business {
   updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
 
-  locations       Location[]
-  positions       Position[]
-  memberships     Membership[]
-  invites         Invite[]
-  shifts          Shift[]
-  swapRequests    SwapRequest[]
-  timeOffRequests TimeOffRequest[]
-  notifications   Notification[]
-  auditLogs       AuditLog[]
-  seatPeriods     SeatPeriod[]
-  subscription    Subscription?
+  locations        Location[]
+  positions        Position[]
+  memberships      Membership[]
+  invites          Invite[]
+  shifts           Shift[]
+  swapRequests     SwapRequest[]
+  timeOffRequests  TimeOffRequest[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  seatPeriods      SeatPeriod[]
+  subscription     Subscription?
+  billingCheckouts BillingCheckout[]
+  ledgerEntries    BillingLedgerEntry[]
 }
 
 model Location {
@@ -513,6 +554,9 @@ model Notification {
   deliveries NotificationDelivery[]
 
   @@index([userId, createdAt])
+  // Keyset cursor pagination for the inbox list: (createdAt DESC, id DESC)
+  // under a userId, matching the "last 90 days" filter. [FR-045, PRD 7.1]
+  @@index([userId, createdAt, id])
 }
 
 model NotificationDelivery {
@@ -552,9 +596,17 @@ model Subscription {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
-  invoices Invoice[]
+  invoices          Invoice[]
+  planCode          String?
+  plan              Plan?                @relation("SubscriptionPlan", fields: [planCode], references: [code])
+  pendingPlanCode   String?
+  pendingPlan       Plan?                @relation("SubscriptionPendingPlan", fields: [pendingPlanCode], references: [code])
+  checkoutSeatCount Int?
+  billingCheckouts  BillingCheckout[]
+  ledgerEntries     BillingLedgerEntry[]
 
   @@index([status, currentPeriodEnd])
+  @@index([planCode])
 }
 
 model Invoice {
@@ -574,8 +626,11 @@ model Invoice {
   paidAt         DateTime?
   createdAt      DateTime      @default(now())
 
-  lines InvoiceLine[]
+  lines            InvoiceLine[]
+  billingCheckouts BillingCheckout[]
+  ledgerEntries    BillingLedgerEntry[]
 
+  @@unique([subscriptionId, periodStart])
   @@index([subscriptionId, status])
   @@index([status, nextAttemptAt])
 }
@@ -590,6 +645,76 @@ model InvoiceLine {
   unitAmountMinor Int // integer kobo [M-1]
   amountMinor     Int // integer kobo [M-1]
 
+  @@index([invoiceId])
+}
+
+model Plan {
+  code                String   @id
+  name                String
+  monthlyPriceMinor   Int
+  includedSeats       Int
+  extraSeatPriceMinor Int
+  currency            Currency @default(NGN)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  currentSubscriptions Subscription[]       @relation("SubscriptionPlan")
+  pendingSubscriptions Subscription[]       @relation("SubscriptionPendingPlan")
+  checkouts            BillingCheckout[]
+  ledgerEntries        BillingLedgerEntry[]
+}
+
+model BillingCheckout {
+  id             String                 @id @default(cuid())
+  businessId     String
+  business       Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  invoiceId      String?
+  invoice        Invoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  planCode       String
+  plan           Plan                   @relation(fields: [planCode], references: [code])
+  purpose        BillingCheckoutPurpose
+  status         BillingCheckoutStatus  @default(PENDING)
+  amountMinor    Int
+  currency       Currency               @default(NGN)
+  seatCount      Int
+  txRef          String                 @unique
+  idempotencyKey String
+  providerLink   String?
+  providerRef    String?
+  completedAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([businessId, idempotencyKey])
+  @@index([subscriptionId, status])
+  @@index([status, createdAt])
+}
+
+model BillingLedgerEntry {
+  id             String          @id @default(cuid())
+  businessId     String
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  invoiceId      String?
+  invoice        Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  kind           LedgerEntryKind
+  amountMinor    Int
+  currency       Currency        @default(NGN)
+  planCode       String?
+  plan           Plan?           @relation(fields: [planCode], references: [code])
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  idempotencyKey String          @unique
+  providerTxnRef String?
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([subscriptionId, createdAt])
   @@index([invoiceId])
 }
 

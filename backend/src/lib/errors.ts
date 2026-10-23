@@ -38,6 +38,28 @@ export const ErrorCode = {
   // Invite-specific
   INVITE_EXPIRED: "INVITE_EXPIRED",
   INVITE_LOCKED: "INVITE_LOCKED",
+  INVITE_ALREADY_ACCEPTED: "INVITE_ALREADY_ACCEPTED",
+  INVITE_REVOKED: "INVITE_REVOKED",
+  // Membership-specific
+  MEMBERSHIP_REQUIRED: "MEMBERSHIP_REQUIRED",
+  OWNER_PROTECTED: "OWNER_PROTECTED",
+  // Billing
+  SUBSCRIPTION_READ_ONLY: "SUBSCRIPTION_READ_ONLY",
+  BILLING_NOT_CONFIGURED: "BILLING_NOT_CONFIGURED",
+  PLAN_NOT_FOUND: "PLAN_NOT_FOUND",
+  PLAN_SEAT_LIMIT: "PLAN_SEAT_LIMIT",
+  INVOICE_NOT_FOUND: "INVOICE_NOT_FOUND",
+  CHECKOUT_NOT_FOUND: "CHECKOUT_NOT_FOUND",
+  PAYMENT_PROVIDER_ERROR: "PAYMENT_PROVIDER_ERROR",
+  IDEMPOTENCY_REQUIRED: "IDEMPOTENCY_REQUIRED",
+  BILLING_CONFLICT: "BILLING_CONFLICT",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+export class PaymentProviderError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "PaymentProviderError";
+  }
+}

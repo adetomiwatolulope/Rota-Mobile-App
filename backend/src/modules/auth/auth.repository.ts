@@ -19,12 +19,14 @@ export const authRepository = {
     email: string;
     passwordHash: string;
     name: string;
+    emailVerifiedAt?: Date;
   }) {
     return prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
         passwordHash: data.passwordHash,
         name: data.name,
+        emailVerifiedAt: data.emailVerifiedAt,
       },
     });
   },
@@ -63,9 +65,29 @@ export const authRepository = {
     });
   },
 
+  /**
+   * Consume a code exactly once. Returns the number of rows changed so the
+   * caller can reject a code that another request consumed first. [P-4]
+   */
   consumeAuthCode(id: string) {
-    return prisma.authCode.update({
-      where: { id },
+    return prisma.authCode.updateMany({
+      where: { id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+  },
+
+  /**
+   * Void earlier live codes for the same email and purpose before issuing a new
+   * one, so only the most recent code can ever be used. [FR-001, FR-003]
+   */
+  invalidateActiveAuthCodes(email: string, purpose: AuthCodePurpose) {
+    return prisma.authCode.updateMany({
+      where: {
+        email: email.toLowerCase(),
+        purpose,
+        consumedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       data: { consumedAt: new Date() },
     });
   },
@@ -98,7 +120,12 @@ export const authRepository = {
     });
   },
 
-  /** Rotate: revoke old token and create a new one in a transaction. [P-2] */
+  /**
+   * Rotate: consume the old token and create the new one in one transaction.
+   * The conditional update makes reuse detection atomic: if another request
+   * already rotated (or revoked) the token, no row changes and this returns
+   * null so the caller can reject the reused token. [P-2, D-3]
+   */
   async rotateRefreshToken(
     oldId: string,
     newTokenData: {
@@ -109,10 +136,16 @@ export const authRepository = {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      const consumed = await tx.refreshToken.updateMany({
+        where: { id: oldId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      if (consumed.count === 0) return null;
+
       const newToken = await tx.refreshToken.create({ data: newTokenData });
       await tx.refreshToken.update({
         where: { id: oldId },
-        data: { revokedAt: new Date(), replacedByTokenId: newToken.id },
+        data: { replacedByTokenId: newToken.id },
       });
       return newToken;
     });

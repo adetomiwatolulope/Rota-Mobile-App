@@ -12,6 +12,7 @@
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
+import { isPasswordValid, passwordPolicyMessage } from "@rota/shared";
 import { env } from "../../config/env.js";
 import { AppError, ErrorCode } from "../../lib/errors.js";
 import {
@@ -21,8 +22,17 @@ import {
   REFRESH_TOKEN_TTL_MS,
 } from "../../lib/constants.js";
 import { authRepository } from "./auth.repository.js";
+import {
+  googleIdentityProvider,
+  type GoogleIdentity,
+} from "../../providers/identity/google/index.js";
 
 type SessionPayload = { userId: string; sessionId: string };
+
+/** Seam for tests: the real provider verifies the token with Google. */
+type GoogleDeps = {
+  verifyGoogleIdToken: (idToken: string) => Promise<GoogleIdentity>;
+};
 
 /** Hash a password with argon2id. [P-1] */
 async function hashPassword(password: string): Promise<string> {
@@ -35,20 +45,34 @@ async function verifyPassword(hash: string, plain: string): Promise<boolean> {
 }
 
 /** Hash an opaque token (codes, refresh tokens) with SHA-256. [P-1] */
-function hashToken(plain: string): string {
+export function hashToken(plain: string): string {
   return crypto.createHash("sha256").update(plain).digest("hex");
 }
 
 /** Generate a random opaque token of `byteLength` bytes, hex-encoded. */
-function generateOpaqueToken(byteLength = 32): string {
+export function generateOpaqueToken(byteLength = 32): string {
   return crypto.randomBytes(byteLength).toString("hex");
 }
 
-/** Generate a random 6-digit code as a string. */
-function generate6DigitCode(): string {
-  // Generates a number in [0, 999999] and zero-pads to 6 digits
-  const n = crypto.randomInt(0, 1_000_000);
-  return n.toString().padStart(6, "0");
+/**
+ * Generate a 6-digit verification code from 32 cryptographically secure random
+ * bytes. Never uses Math.random() or crypto.randomInt(). Each digit is drawn
+ * from the byte stream with rejection sampling so all ten digits are equally
+ * likely (plain `byte % 10` would favour 0–5). [P-1, owner]
+ */
+export function generate6DigitCode(): string {
+  // 256 is not divisible by 10, so discard bytes >= 250 to stay unbiased.
+  const UNBIASED_LIMIT = 250;
+  const digits: string[] = [];
+  while (digits.length < 6) {
+    for (const byte of crypto.randomBytes(32)) {
+      if (byte < UNBIASED_LIMIT) {
+        digits.push(String(byte % 10));
+        if (digits.length === 6) break;
+      }
+    }
+  }
+  return digits.join("");
 }
 
 /** Sign a 15-minute access JWT. [P-2] */
@@ -78,19 +102,15 @@ async function issueTokenPair(
 }
 
 export const authService = {
-  /** FR-001: Register with email, password (≥10 chars), and name. */
+  /** FR-001: Register with email, a policy-compliant password, and name. */
   async register(data: {
     email: string;
     password: string;
     name: string;
     deviceId: string;
   }) {
-    if (data.password.length < 10) {
-      throw new AppError(
-        ErrorCode.VALIDATION,
-        400,
-        "Password must be at least 10 characters",
-      );
+    if (!isPasswordValid(data.password)) {
+      throw new AppError(ErrorCode.VALIDATION, 400, passwordPolicyMessage());
     }
 
     const existing = await authRepository.findUserByEmail(data.email);
@@ -106,7 +126,10 @@ export const authService = {
     });
 
     // Register device (not trusted yet — trust requires email verification + device code)
-    await authRepository.upsertDevice({ userId: user.id, deviceId: data.deviceId });
+    const device = await authRepository.upsertDevice({
+      userId: user.id,
+      deviceId: data.deviceId,
+    });
 
     // Send email verification code
     const code = generate6DigitCode();
@@ -119,9 +142,21 @@ export const authService = {
       expiresAt,
     });
 
-    // In production the email provider sends the code; here we return it for
-    // the provider to forward. The route must not log it. [P-5]
-    return { userId: user.id, verificationCodeForEmail: code };
+    // Soft verification: the user gets a session immediately and reaches the
+    // dashboard, where they are asked to verify. Business creation stays gated
+    // until email is verified. [FR-001]
+    // RefreshToken.deviceId is a FK to Device.id, not the app's deviceId string.
+    const tokens = await issueTokenPair(user.id, device.id);
+
+    // The email provider (via a background job) sends the code. Returned to the
+    // route for enqueueing only; the route never logs or returns it. [P-5]
+    return {
+      userId: user.id,
+      name: data.name,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      verificationCodeForEmail: code,
+    };
   },
 
   /** FR-001: Verify email with a 6-digit code. 6th wrong attempt invalidates. */
@@ -152,7 +187,10 @@ export const authService = {
       );
     }
 
-    await authRepository.consumeAuthCode(record.id);
+    const consumed = await authRepository.consumeAuthCode(record.id);
+    if (consumed.count === 0) {
+      throw new AppError(ErrorCode.CODE_EXPIRED, 400, "This code has already been used");
+    }
     if (record.userId) {
       await authRepository.markEmailVerified(record.userId);
       await authRepository.trustDevice(record.userId, data.deviceId);
@@ -208,12 +246,67 @@ export const authService = {
       return {
         requiresDeviceVerification: true as const,
         deviceCodeForEmail: code,
+        name: user.name,
       };
     }
 
     // Known trusted device — issue tokens
     const tokens = await issueTokenPair(user.id, device?.id);
     return { requiresDeviceVerification: false as const, ...tokens };
+  },
+
+  /**
+   * Owner-approved Google sign-in (PRD deviation: Google OAuth is not in the
+   * PRD). Verifies the Google ID token, creates the user on first sign-in,
+   * and issues the same token pair as login.
+   *
+   * - Google verified the email, so emailVerifiedAt is set at creation. [FR-001]
+   * - Google proved the account on this device, so the device is trusted
+   *   directly instead of emailing a new-device code. [P-3, FR-002]
+   * - The schema is locked [L-4], so User.passwordHash stays non-null:
+   *   Google-created users get an argon2id hash of a random pre-image that
+   *   nobody knows, so password login stays impossible until the user sets a
+   *   real password through password reset. [FR-003]
+   */
+  async signInWithGoogle(
+    data: { idToken: string; deviceId: string },
+    deps: GoogleDeps = {
+      verifyGoogleIdToken: (token) => googleIdentityProvider.verifyIdToken(token),
+    },
+  ) {
+    const identity = await deps.verifyGoogleIdToken(data.idToken);
+    if (!identity.emailVerified) {
+      throw new AppError(
+        ErrorCode.UNAUTHORIZED,
+        401,
+        "Your Google account email is not verified",
+      );
+    }
+
+    let user = await authRepository.findUserByEmail(identity.email);
+    if (!user) {
+      const unusablePasswordHash = await hashPassword(generateOpaqueToken());
+      try {
+        user = await authRepository.createUser({
+          email: identity.email,
+          passwordHash: unusablePasswordHash,
+          name: identity.name,
+          emailVerifiedAt: new Date(),
+        });
+      } catch {
+        // Two first-time sign-ins can race on the unique email index; the
+        // loser reads the winner's row and continues.
+        user = await authRepository.findUserByEmail(identity.email);
+        if (!user) {
+          throw new AppError(ErrorCode.INTERNAL, 500, "Could not create account");
+        }
+      }
+    }
+
+    await authRepository.upsertDevice({ userId: user.id, deviceId: data.deviceId });
+    await authRepository.trustDevice(user.id, data.deviceId);
+    const device = await authRepository.findDevice(user.id, data.deviceId);
+    return issueTokenPair(user.id, device?.id ?? undefined);
   },
 
   /** FR-002: Verify new-device code after login. Sets trustedAt and issues tokens. */
@@ -247,7 +340,10 @@ export const authService = {
       throw new AppError(ErrorCode.CODE_INVALID, 400, "Invalid code");
     }
 
-    await authRepository.consumeAuthCode(record.id);
+    const consumed = await authRepository.consumeAuthCode(record.id);
+    if (consumed.count === 0) {
+      throw new AppError(ErrorCode.CODE_EXPIRED, 400, "This code has already been used");
+    }
     await authRepository.trustDevice(user.id, data.deviceId);
 
     const device = await authRepository.findDevice(user.id, data.deviceId);
@@ -289,6 +385,17 @@ export const authService = {
       expiresAt,
     });
 
+    // Another request consumed the token first: this is reuse of a rotated
+    // token, so revoke the whole chain. [P-2]
+    if (!newToken) {
+      await authRepository.revokeAllUserRefreshTokens(stored.userId);
+      throw new AppError(
+        ErrorCode.TOKEN_REVOKED,
+        401,
+        "Token reuse detected. All sessions revoked.",
+      );
+    }
+
     const accessToken = signAccessToken({
       userId: stored.userId,
       sessionId: newToken.id,
@@ -297,16 +404,24 @@ export const authService = {
     return { accessToken, refreshToken: plainNew };
   },
 
-  /** FR-002: Logout — revoke current refresh token. */
+  /** FR-002: Logout — revoke the current refresh token. */
   async logout(sessionId: string) {
     await authRepository.revokeRefreshToken(sessionId);
+  },
+
+  /** Logout all devices — revoke every refresh token the user holds. */
+  async logoutAll(userId: string) {
+    await authRepository.revokeAllUserRefreshTokens(userId);
   },
 
   /** FR-003: Request password-reset code. */
   async requestPasswordReset(email: string) {
     const user = await authRepository.findUserByEmail(email);
     // Always return 200 to prevent user enumeration
-    if (!user) return { codeSentIfExists: true };
+    if (!user) return { codeSentIfExists: true as const };
+
+    // Only the newest reset code may work. [FR-003]
+    await authRepository.invalidateActiveAuthCodes(user.email, "PASSWORD_RESET");
 
     const code = generate6DigitCode();
     const expiresAt = new Date(Date.now() + AUTH_CODE_TTL_MS);
@@ -318,7 +433,11 @@ export const authService = {
       expiresAt,
     });
 
-    return { codeSentIfExists: true, resetCodeForEmail: code };
+    return {
+      codeSentIfExists: true as const,
+      resetCodeForEmail: code,
+      name: user.name,
+    };
   },
 
   /** FR-003: Complete password reset and revoke all sessions. */
@@ -327,12 +446,8 @@ export const authService = {
     code: string;
     newPassword: string;
   }) {
-    if (data.newPassword.length < 10) {
-      throw new AppError(
-        ErrorCode.VALIDATION,
-        400,
-        "Password must be at least 10 characters",
-      );
+    if (!isPasswordValid(data.newPassword)) {
+      throw new AppError(ErrorCode.VALIDATION, 400, passwordPolicyMessage());
     }
 
     const record = await authRepository.findActiveAuthCode(
@@ -358,7 +473,10 @@ export const authService = {
       throw new AppError(ErrorCode.NOT_FOUND, 404, "User not found");
     }
 
-    await authRepository.consumeAuthCode(record.id);
+    const consumed = await authRepository.consumeAuthCode(record.id);
+    if (consumed.count === 0) {
+      throw new AppError(ErrorCode.CODE_EXPIRED, 400, "This code has already been used");
+    }
     const passwordHash = await hashPassword(data.newPassword);
     await authRepository.updatePassword(record.userId, passwordHash);
     // Revoke all sessions after password reset [FR-003]

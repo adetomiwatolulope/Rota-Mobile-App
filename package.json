@@ -11,10 +11,15 @@
     "packages/shared"
   ],
   "scripts": {
+    "start": "npm run start --workspace=@rota/mobile",
     "dev:backend": "npm run dev --workspace=@rota/api",
     "dev:frontend": "npm run start --workspace=@rota/mobile",
     "dev:api": "npm run dev --workspace=@rota/api",
     "dev:mobile": "npm run start --workspace=@rota/mobile",
+    "tokens": "node scripts/tokens-to-css.js && node scripts/tokens-to-ts.js",
     "check": "npm run typecheck --workspaces --if-present && npm run lint --workspaces --if-present && npm run format:check --workspaces --if-present && npm test --workspaces --if-present"
+  },
+  "dependencies": {
+    "@expo/ngrok": "^4.1.3"
   }
 }

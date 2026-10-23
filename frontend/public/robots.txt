@@ -1,0 +1,4 @@
+# Rota
+# A sitemap is omitted until the production domain is configured.
+User-agent: *
+Allow: /

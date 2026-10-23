@@ -1,27 +1,59 @@
+import { refreshAccessToken } from "./session";
+
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000/v1";
 
-type ApiResult<T> = { data: T } | { error: { code: string; message: string } };
+export type ApiResult<T> = { data: T } | { error: { code: string; message: string } };
 
-export async function apiGet<T>(path: string, token?: string): Promise<ApiResult<T>> {
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+async function request<T>(
+  method: Method,
+  path: string,
+  body: unknown,
+  token?: string,
+  allowRefresh = true,
+): Promise<ApiResult<T>> {
   const res = await fetch(`${API_BASE}${path}`, {
+    method,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
+    // GET and DELETE carry no body.
+    ...(method === "GET" || method === "DELETE"
+      ? {}
+      : { body: JSON.stringify(body ?? {}) }),
   });
-  const json = await res.json();
-  return json as ApiResult<T>;
+
+  // A 15-minute access token will expire during normal use. Rotate the refresh
+  // token, store the new pair, and retry the request once. [P-2]
+  if (res.status === 401 && token && allowRefresh && !path.startsWith("/auth/")) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return request<T>(method, path, body, refreshed, false);
+    }
+  }
+
+  const json = (await res.json()) as ApiResult<T>;
+  return json;
 }
 
-export async function apiPost<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  return json as ApiResult<T>;
+export function apiGet<T>(path: string, token?: string): Promise<ApiResult<T>> {
+  return request<T>("GET", path, undefined, token);
+}
+
+export function apiPost<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {
+  return request<T>("POST", path, body, token);
+}
+
+export function apiPatch<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {
+  return request<T>("PATCH", path, body, token);
+}
+
+export function apiPut<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {
+  return request<T>("PUT", path, body, token);
+}
+
+export function apiDelete<T>(path: string, token?: string): Promise<ApiResult<T>> {
+  return request<T>("DELETE", path, undefined, token);
 }
