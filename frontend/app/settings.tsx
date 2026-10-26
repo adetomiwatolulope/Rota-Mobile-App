@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,10 @@ import {
 import { queryKeys } from "@/api/queryKeys";
 import { PageHead } from "@/components/PageHead";
 import { QUERY_CACHE } from "@/lib/queryClient";
+import {
+  hasNotificationPermission,
+  requestNotificationPermission,
+} from "@/features/notifications/push";
 import { radii, spacing, typeStyle, useTheme, type ThemeColors } from "@/theme";
 
 type SettingsResult = Awaited<ReturnType<typeof getSettings>>;
@@ -57,6 +62,19 @@ export default function SettingsScreen() {
     query.data && !("error" in query.data) ? query.data.data.settings : null;
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [pushAllowed, setPushAllowed] = useState<boolean | null>(null);
+
+  const refreshPushPermission = useCallback(async () => {
+    setPushAllowed(await hasNotificationPermission());
+  }, []);
+
+  // The OS permission can change outside the app (system settings), so check it
+  // whenever this screen comes back into view.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPushPermission();
+    }, [refreshPushPermission]),
+  );
 
   const mutation = useMutation({
     mutationFn: (patch: UserSettingsPatch) => updateSettings(patch),
@@ -144,6 +162,37 @@ export default function SettingsScreen() {
         <SaveStatus state={saveState} styles={styles} />
 
         <Section title="Notifications" styles={styles}>
+          {Platform.OS !== "web" ? (
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowLabel}>Device notifications</Text>
+                <Text style={styles.rowDescription}>
+                  {pushAllowed
+                    ? "Allowed on this device."
+                    : "Turn on to receive shift and billing alerts."}
+                </Text>
+              </View>
+              {pushAllowed ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={24}
+                  color={colors.primary}
+                />
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Allow notifications on this device"
+                  style={styles.permissionButton}
+                  onPress={async () => {
+                    const allowed = await requestNotificationPermission();
+                    setPushAllowed(allowed);
+                  }}
+                >
+                  <Text style={styles.permissionLabel}>Turn on</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
           <ToggleRow
             label="Shift changes"
             description="New, moved, and cancelled shifts."
@@ -506,6 +555,14 @@ function createStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.outline,
     },
+    permissionButton: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    permissionLabel: { ...typeStyle("body-small"), color: colors.primary },
     themeChoiceActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     themeChoiceLabel: { ...typeStyle("body-small"), color: colors.onSurface },
     themeChoiceLabelActive: { color: colors.onPrimary },

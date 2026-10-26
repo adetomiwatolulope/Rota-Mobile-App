@@ -5,6 +5,7 @@ const ACCESS = "rota_access_token";
 const REFRESH = "rota_refresh_token";
 const DEVICE = "rota_device_id";
 const PENDING_INVITE = "rota_pending_invite_token";
+const PUSH_TOKEN = "rota_push_token";
 
 export async function setTokens(access: string, refresh: string) {
   await SecureStore.setItemAsync(ACCESS, access);
@@ -35,6 +36,19 @@ export async function getPendingInviteToken() {
 
 export async function clearPendingInviteToken() {
   await SecureStore.deleteItemAsync(PENDING_INVITE);
+}
+
+/** The Expo push token registered for this install, if any. */
+export async function setPushToken(token: string) {
+  await SecureStore.setItemAsync(PUSH_TOKEN, token);
+}
+
+export async function getPushToken() {
+  return SecureStore.getItemAsync(PUSH_TOKEN);
+}
+
+export async function clearPushToken() {
+  await SecureStore.deleteItemAsync(PUSH_TOKEN);
 }
 
 /**

@@ -5,6 +5,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiGet } from "@/api/client";
 import { endSession } from "@/api/session";
 import { getAccessToken } from "@/lib/secureStore";
+import {
+  registerForPushNotifications,
+  unregisterPushNotifications,
+} from "@/features/notifications/push";
 import { PageHead } from "@/components/PageHead";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { radii, spacing, typeStyle, useTheme, type ThemeColors } from "@/theme";
@@ -32,6 +36,12 @@ export default function Dashboard() {
   useEffect(() => {
     void loadMe();
   }, [loadMe]);
+
+  // Signing in is the first point where a push token can be tied to an
+  // account. The prompt is shown once; later visits only refresh the token.
+  useEffect(() => {
+    void registerForPushNotifications();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -77,6 +87,7 @@ export default function Dashboard() {
         accessibilityLabel="Logout"
         style={styles.button}
         onPress={async () => {
+          await unregisterPushNotifications();
           await endSession(false);
           queryClient.clear();
           router.replace("/auth");

@@ -6,14 +6,14 @@
  * single-flight: parallel requests share one exchange, so the same refresh
  * token is never presented twice (which the API treats as theft and revokes).
  */
+import { API_BASE } from "./base";
+import { fetchWithTimeout } from "./fetch";
 import {
   clearTokens,
   getAccessToken,
   getRefreshToken,
   setTokens,
 } from "@/lib/secureStore";
-
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000/v1";
 
 type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -39,7 +39,7 @@ export function refreshAccessToken(): Promise<string | null> {
     if (!refreshToken) return null;
 
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
@@ -66,7 +66,7 @@ export function refreshAccessToken(): Promise<string | null> {
 }
 
 async function revokeOnServer(accessToken: string, allDevices: boolean): Promise<void> {
-  await fetch(`${API_BASE}/auth/logout`, {
+  await fetchWithTimeout(`${API_BASE}/auth/logout`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -81,7 +81,7 @@ export async function endSession(allDevices: boolean): Promise<void> {
   const accessToken = await getAccessToken();
   if (accessToken) {
     try {
-      const res = await fetch(`${API_BASE}/auth/logout`, {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

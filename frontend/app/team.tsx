@@ -23,6 +23,7 @@ import {
 } from "@/api/team";
 import { queryKeys } from "@/api/queryKeys";
 import { endSession } from "@/api/session";
+import { unregisterPushNotifications } from "@/features/notifications/push";
 import { QUERY_CACHE } from "@/lib/queryClient";
 import { PageHead } from "@/components/PageHead";
 import { InviteMemberForm } from "@/components/InviteMemberForm";
@@ -316,6 +317,7 @@ export default function Team() {
           accessibilityRole="button"
           accessibilityLabel="Logout"
           onPress={async () => {
+            await unregisterPushNotifications();
             await endSession(false);
             queryClient.clear();
             router.replace("/auth");

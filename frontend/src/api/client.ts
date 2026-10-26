@@ -1,6 +1,6 @@
+import { API_BASE } from "./base";
+import { fetchWithTimeout } from "./fetch";
 import { refreshAccessToken } from "./session";
-
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000/v1";
 
 export type ApiResult<T> = { data: T } | { error: { code: string; message: string } };
 
@@ -13,7 +13,7 @@ async function request<T>(
   token?: string,
   allowRefresh = true,
 ): Promise<ApiResult<T>> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",

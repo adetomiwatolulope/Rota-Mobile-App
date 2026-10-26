@@ -4,7 +4,7 @@
  * `cursor` to load the next (older) page.
  */
 import type { CursorPage, NotificationItem } from "@rota/shared";
-import { apiGet, apiPost, type ApiResult } from "./client";
+import { apiDelete, apiGet, apiPost, type ApiResult } from "./client";
 import { getAccessToken } from "@/lib/secureStore";
 
 export type InboxPage = CursorPage<NotificationItem> & { unreadCount: number };
@@ -24,4 +24,24 @@ export async function markNotificationRead(
 ): Promise<ApiResult<{ read: true }>> {
   const token = (await getAccessToken()) ?? undefined;
   return apiPost(`/notifications/${id}/read`, {}, token);
+}
+
+export type PushPlatform = "IOS" | "ANDROID";
+
+/** Register this device's Expo push token with the API. [FR-043] */
+export async function registerPushToken(
+  expoPushToken: string,
+  platform: PushPlatform,
+  deviceId: string,
+): Promise<ApiResult<{ registered: true }>> {
+  const token = (await getAccessToken()) ?? undefined;
+  return apiPost("/push-tokens", { expoPushToken, platform, deviceId }, token);
+}
+
+/** Disable a push token on logout so this device stops receiving alerts. */
+export async function removePushToken(
+  expoPushToken: string,
+): Promise<ApiResult<{ deleted: true }>> {
+  const token = (await getAccessToken()) ?? undefined;
+  return apiDelete(`/push-tokens/${encodeURIComponent(expoPushToken)}`, token);
 }
