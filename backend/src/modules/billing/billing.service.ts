@@ -147,14 +147,18 @@ export const billingService = {
     // Return existing checkout for same idempotency
     const existing = await billingRepository.findCheckoutByIdempotency(ctx.businessId, idempotencyKey);
     if (existing && existing.status === "PENDING" && existing.providerLink) {
-      return {
-        checkoutId: existing.id,
-        url: existing.providerLink,
-        status: existing.status,
-        purpose: existing.purpose,
-        amountMinor: existing.amountMinor,
-        seatCount: existing.seatCount,
-      };
+      throw new AppError(ErrorCode.PENDING_CHECKOUT_EXISTS as any, 409, "A pending checkout already exists for this request. Please complete or wait for it to expire.");
+    }
+
+    // Prevent double charge: check for any pending checkouts for this subscription
+    const pendingCheckouts = await prisma.billingCheckout.count({
+      where: {
+        subscriptionId: sub.id,
+        status: "PENDING",
+      },
+    });
+    if (pendingCheckouts > 0) {
+      throw new AppError(ErrorCode.DOUBLE_CHARGE_ATTEMPT as any, 409, "You have a pending subscription payment. Please complete or cancel it before starting a new payment.");
     }
 
     if (sub.status === "READ_ONLY" || sub.status === "CANCELLED") {
@@ -169,15 +173,54 @@ export const billingService = {
     if (!plan) {
       throw new AppError(ErrorCode.PLAN_NOT_FOUND, 404, "Plan not found");
     }
+    const currentPlan = sub.plan || (await billingRepository.findPlan(sub.planCode as BillingPlanCode));
 
     const seatCount = await billingRepository.countOpenSeatPeriodsNow(ctx.businessId);
     // For seat limit, enforce at invite time; for billing allow checkout
     let extraSeats = Math.max(0, seatCount - plan.includedSeats);
     if (plan.extraSeatPriceMinor === 0 && extraSeats > 0) {
-      // Should not happen if enforced, but charge at plan rate not possible
       extraSeats = 0;
     }
-    const amountMinor = plan.monthlyPriceMinor + extraSeats * plan.extraSeatPriceMinor;
+
+    let amountMinor = 0;
+    const now = new Date();
+    const isActive = sub.status === "ACTIVE" && sub.currentPeriodStart && sub.currentPeriodEnd;
+    
+    if (isActive && currentPlan) {
+      const currentPlanCode = sub.planCode as BillingPlanCode;
+      // If same plan, just charge for extra seats prorated? Or full for period renewal
+      if (currentPlanCode === planCode) {
+        // Same plan - charge for extra seats at full rate if adding seats mid-period
+        amountMinor = extraSeats * plan.extraSeatPriceMinor;
+        if (amountMinor < 0) amountMinor = 0;
+      } else {
+        // Plan change - calculate proration
+        const periodDays = Math.max(1, calcPeriodDays(sub.currentPeriodStart!, sub.currentPeriodEnd!));
+        const remainingDays = Math.max(1, calcRemainingDays(now, sub.currentPeriodEnd!));
+        
+        // Check if downgrade
+        const currentPlanPrice = currentPlan.monthlyPriceMinor;
+        const newPlanPrice = plan.monthlyPriceMinor;
+        if (newPlanPrice < currentPlanPrice) {
+          // Downgrade - apply at period end, no immediate charge
+          throw new AppError(ErrorCode.DOWNGRADE_SCHEDULED as any, 409, "Downgrade will be applied at the end of your current billing period. No charge will be made now.");
+        }
+        
+        // Upgrade - calculate proration: charge for new plan for remaining time minus credit for unused old plan
+        const newPlanCharge = calcProratedKobo(newPlanPrice, remainingDays, periodDays);
+        const unusedCredit = calcProratedKobo(currentPlanPrice, remainingDays, periodDays);
+        amountMinor = Math.max(0, newPlanCharge - unusedCredit);
+        
+        // Add prorated extra seats if any
+        if (extraSeats > 0 && plan.extraSeatPriceMinor > 0) {
+          const proratedExtraSeats = calcProratedKobo(plan.extraSeatPriceMinor * extraSeats, remainingDays, periodDays);
+          amountMinor += proratedExtraSeats;
+        }
+      }
+    } else {
+      // New subscription or trial
+      amountMinor = plan.monthlyPriceMinor + extraSeats * plan.extraSeatPriceMinor;
+    }
 
     const txRef = `ROTA-${ctx.businessId.slice(0, 8)}-${Date.now()}-${randomUUID().slice(0, 8)}`;
 
@@ -206,7 +249,7 @@ export const billingService = {
       business: { connect: { id: ctx.businessId } },
       subscription: { connect: { id: sub.id } },
       plan: { connect: { code: plan.code } },
-      purpose: sub.status === "ACTIVE" ? "UPGRADE" : "SUBSCRIBE",
+      purpose: sub.status === "ACTIVE" && currentPlan && (sub.planCode as BillingPlanCode) !== planCode ? "UPGRADE" : sub.status === "ACTIVE" ? "RENEWAL" : "SUBSCRIBE",
       status: "PENDING",
       amountMinor,
       currency: "NGN",

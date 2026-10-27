@@ -160,14 +160,131 @@ export async function billingWebhookJob(jobData: unknown) {
           // ignore duplicate
         }
       } else if (checkout.purpose === "UPGRADE") {
-        // immediate upgrade - simplified: update plan
+        const now = new Date();
+        const subData = checkout.subscription;
+        if (subData.currentPeriodStart && subData.currentPeriodEnd) {
+          await tx.subscription.update({
+            where: { id: subData.id },
+            data: {
+              planCode: checkout.planCode,
+              seatPriceMinor: checkout.plan.monthlyPriceMinor,
+            },
+          });
+        } else {
+          const periodStart = now;
+          const periodEnd = DateTime.fromJSDate(periodStart, { zone: "Africa/Lagos" }).plus({ months: 1 }).toJSDate();
+          await tx.subscription.update({
+            where: { id: subData.id },
+            data: {
+              planCode: checkout.planCode,
+              seatPriceMinor: checkout.plan.monthlyPriceMinor,
+              currentPeriodStart: periodStart,
+              currentPeriodEnd: periodEnd,
+            },
+          });
+        }
+        if (checkout.amountMinor > 0) {
+          const invoice = await tx.invoice.create({
+            data: {
+              subscriptionId: subData.id,
+              periodStart: subData.currentPeriodStart || now,
+              periodEnd: subData.currentPeriodEnd || DateTime.fromJSDate(now, { zone: "Africa/Lagos" }).plus({ months: 1 }).toJSDate(),
+              dueAt: now,
+              seatCount: checkout.seatCount,
+              totalMinor: checkout.amountMinor,
+              currency: "NGN",
+              status: "PAID",
+              paidAt: new Date(),
+              providerTxnRef: verification.txRef,
+              lines: {
+                create: {
+                  kind: "PRORATION",
+                  description: `Prorated upgrade to ${checkout.plan.name}`,
+                  quantity: 1,
+                  unitAmountMinor: checkout.amountMinor,
+                  amountMinor: checkout.amountMinor,
+                },
+              },
+            },
+          });
+          try {
+            await tx.billingLedgerEntry.create({
+              data: {
+                businessId: checkout.businessId,
+                subscriptionId: subData.id,
+                invoiceId: invoice.id,
+                kind: "CHARGE",
+                amountMinor: invoice.totalMinor,
+                currency: "NGN",
+                planCode: checkout.planCode,
+                periodStart: invoice.periodStart,
+                periodEnd: invoice.periodEnd,
+                idempotencyKey: `invoice:${invoice.id}:charge:upgrade`,
+                providerTxnRef: verification.txRef,
+              },
+            });
+          } catch (e) {
+            // ignore duplicate
+          }
+        }
+      } else if (checkout.purpose === "RENEWAL") {
+        const now = new Date();
+        const periodStart = sub.currentPeriodEnd || now;
+        const periodEnd = DateTime.fromJSDate(periodStart, { zone: "Africa/Lagos" }).plus({ months: 1 }).toJSDate();
         await tx.subscription.update({
           where: { id: sub.id },
           data: {
+            status: "ACTIVE",
             planCode: checkout.planCode,
             seatPriceMinor: checkout.plan.monthlyPriceMinor,
+            currentPeriodStart: periodStart,
+            currentPeriodEnd: periodEnd,
+            graceEndsAt: null,
+            providerPaymentTokenRef: verification.cardToken || sub.providerPaymentTokenRef,
           },
         });
+        const invoice = await tx.invoice.create({
+          data: {
+            subscriptionId: sub.id,
+            periodStart,
+            periodEnd,
+            dueAt: periodStart,
+            seatCount: checkout.seatCount,
+            totalMinor: checkout.amountMinor,
+            currency: "NGN",
+            status: "PAID",
+            paidAt: new Date(),
+            providerTxnRef: verification.txRef,
+            lines: {
+              create: {
+                kind: "SEATS",
+                description: `${checkout.plan.name} plan renewal`,
+                quantity: 1,
+                unitAmountMinor: checkout.amountMinor,
+                amountMinor: checkout.amountMinor,
+              },
+            },
+          },
+        });
+        try {
+          await tx.billingLedgerEntry.create({
+            data: {
+              businessId: checkout.businessId,
+              subscriptionId: sub.id,
+              invoiceId: invoice.id,
+              kind: "CHARGE",
+              amountMinor: invoice.totalMinor,
+              currency: "NGN",
+              planCode: checkout.planCode,
+              periodStart: invoice.periodStart,
+              periodEnd: invoice.periodEnd,
+              idempotencyKey: `invoice:${invoice.id}:charge:renewal`,
+              providerTxnRef: verification.txRef,
+            },
+          });
+        } catch (e) {
+          // ignore duplicate
+        }
       }
     });
 

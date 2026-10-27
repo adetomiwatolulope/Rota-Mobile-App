@@ -53,10 +53,18 @@ export default function Dashboard() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open team"
-        style={styles.button}
+        style={styles.secondaryButton}
         onPress={() => router.push("/team")}
       >
-        <Text style={styles.buttonLabel}>Team</Text>
+        <Text style={styles.secondaryButtonLabel}>Team</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open billing"
+        style={styles.secondaryButton}
+        onPress={() => router.push("/billing")}
+      >
+        <Text style={styles.secondaryButtonLabel}>Subscription</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"

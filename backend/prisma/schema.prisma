@@ -155,6 +155,8 @@ enum BillingCheckoutStatus {
 enum BillingCheckoutPurpose {
   SUBSCRIBE
   UPGRADE
+  RENEWAL
+  DOWNGRADE
 }
 
 // ---------- Identity and sessions ----------

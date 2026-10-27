@@ -63,8 +63,21 @@ router.post(
     try {
       const body = billingSessionSchema.parse(req.body ?? {});
       const key = getIdempotencyKey(req);
-      const session = await billingService.createSession(req.membership!, body, key);
-      res.json({ data: session });
+      try {
+        const session = await billingService.createSession(req.membership!, body, key);
+        res.json({ data: session });
+      } catch (err: any) {
+        if (err.code === "PENDING_CHECKOUT_EXISTS" || err.code === "DOUBLE_CHARGE_ATTEMPT" || err.code === "DOWNGRADE_SCHEDULED") {
+          return res.status(err.statusCode || 409).json({ 
+            error: { 
+              code: err.code, 
+              message: err.message,
+              userMessage: err.message 
+            } 
+          });
+        }
+        throw err;
+      }
     } catch (err) {
       next(err);
     }
@@ -81,8 +94,21 @@ router.post(
     try {
       const body = billingPlanChangeSchema.parse(req.body);
       const key = getIdempotencyKey(req);
-      const session = await billingService.changePlan(req.membership!, body, key);
-      res.json({ data: session });
+      try {
+        const session = await billingService.changePlan(req.membership!, body, key);
+        res.json({ data: session });
+      } catch (err: any) {
+        if (err.code === "PENDING_CHECKOUT_EXISTS" || err.code === "DOUBLE_CHARGE_ATTEMPT" || err.code === "DOWNGRADE_SCHEDULED") {
+          return res.status(err.statusCode || 409).json({ 
+            error: { 
+              code: err.code, 
+              message: err.message,
+              userMessage: err.message 
+            } 
+          });
+        }
+        throw err;
+      }
     } catch (err) {
       next(err);
     }
