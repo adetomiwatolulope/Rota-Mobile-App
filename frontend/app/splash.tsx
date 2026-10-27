@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { getAccessToken } from "@/lib/secureStore";
 import { PageHead } from "@/components/PageHead";
-import { typeStyle, useTheme, type ThemeColors } from "@/theme";
+import { useTheme, type ThemeColors } from "@/theme";
+import logo from "../assets/logo.png";
 
 export default function Splash() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function Splash() {
     <>
       <PageHead noIndex path="/splash" />
       <View style={styles.container}>
-        <Text style={styles.wordmark}>Rota</Text>
+        <Image source={logo} style={styles.logo} accessibilityLabel="Rota logo" />
       </View>
     </>
   );
@@ -39,9 +40,10 @@ function createStyles(colors: ThemeColors) {
       justifyContent: "center",
       backgroundColor: colors.surface,
     },
-    wordmark: {
-      ...typeStyle("display-small"),
-      color: colors.primary,
+    logo: {
+      width: 140,
+      height: 140,
+      resizeMode: "contain",
     },
   });
 }

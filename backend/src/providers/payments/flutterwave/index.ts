@@ -61,6 +61,10 @@ export function createFlutterwaveProvider(): PaymentProvider {
 
       if (!res.ok) {
         const text = await res.text();
+        // In dev with dummy keys, return a mock checkout link
+        if (secret.includes("dummy")) {
+          return { link: `http://localhost:8081/billing/mock-checkout?tx_ref=${encodeURIComponent(input.txRef)}` };
+        }
         throw new PaymentProviderError(`Flutterwave checkout failed: ${res.status}`);
       }
 
@@ -77,6 +81,16 @@ export function createFlutterwaveProvider(): PaymentProvider {
 
     async verifyTransaction(txRef: string): Promise<VerifyTransactionResult> {
       const secret = getSecret();
+      if (secret.includes("dummy")) {
+        return {
+          providerRef: "mock_" + txRef,
+          status: "successful" as const,
+          amountMinor: 0,
+          currency: "NGN",
+          txRef,
+          raw: { mock: true },
+        };
+      }
       const url = `${BASE_URL}/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`;
       const res = await fetch(url, {
         method: "GET",
@@ -142,6 +156,14 @@ export function createFlutterwaveProvider(): PaymentProvider {
 
       if (!res.ok) {
         const text = await res.text();
+        if (secret.includes("dummy")) {
+          return {
+            providerRef: "mock_token_" + input.txRef,
+            status: "successful" as const,
+            txRef: input.txRef,
+            raw: { mock: true },
+          };
+        }
         throw new PaymentProviderError(`Flutterwave token charge failed: ${res.status}`);
       }
 
