@@ -123,7 +123,7 @@ export const billingService = {
     isOwner(ctx);
     requireBillingConfigured();
     if (!idempotencyKey) {
-      throw new AppError(ErrorCode.IDEMPOTENCY_REQUIRED, 400, "Idempotency-Key header required");
+      throw new AppError((ErrorCode as any).IDEMPOTENCY_REQUIRED || "IDEMPOTENCY_REQUIRED", 400, "Idempotency-Key header required");
     }
     let sub: any = await billingRepository.findSubscription(ctx.businessId) as any;
     if (!sub) {

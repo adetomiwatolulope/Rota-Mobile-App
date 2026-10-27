@@ -12,12 +12,14 @@ async function request<T>(
   body: unknown,
   token?: string,
   allowRefresh = true,
+  extraHeaders?: Record<string, string>,
 ): Promise<ApiResult<T>> {
   const res = await fetchWithTimeout(`${API_BASE}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(extraHeaders || {}),
     },
     // GET and DELETE carry no body.
     ...(method === "GET" || method === "DELETE"
@@ -42,8 +44,8 @@ export function apiGet<T>(path: string, token?: string): Promise<ApiResult<T>> {
   return request<T>("GET", path, undefined, token);
 }
 
-export function apiPost<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {
-  return request<T>("POST", path, body, token);
+export function apiPost<T>(path: string, body: unknown, token?: string, options?: { headers?: Record<string, string> }): Promise<ApiResult<T>> {
+  return request<T>("POST", path, body, token, true, options?.headers);
 }
 
 export function apiPatch<T>(path: string, body: unknown, token?: string): Promise<ApiResult<T>> {

@@ -62,8 +62,8 @@ export default function Billing() {
     const token = await getAccessToken();
     try {
       const res = await apiPost<any>(`/businesses/${businessId}/billing/session`, { planCode }, token ?? undefined, {
-        headers: { "Idempotency-Key": `sub-${Date.now()}-${Math.random().toString(36).slice(2)}` },
-      } as any);
+        headers: { "Idempotency-Key": `sub-${Date.now()}-${Math.random().toString(36).slice(2)}-${planCode}` },
+      });
       if (!("error" in res) && res.data?.url) {
         await Linking.openURL(res.data.url);
       } else if ("error" in res) {
